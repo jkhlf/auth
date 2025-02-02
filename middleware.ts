@@ -1,11 +1,26 @@
 import { NextResponse, type MiddlewareConfig, type NextRequest } from "next/server"
 
-const publicRoutes = []
+const publicRoutes = [
+    {path: 'login', whenAuthenticated: 'redirect'},
+    {path: 'register', whenAuthenticated: 'redirect'},
+    {path: 'pricing', whenAuthenticated: 'next'},
+
+]
  
 const REDIRECT_WEN_NOT_AUTHENTICATED = '/login'
 
 export function middleware (request: NextRequest) {
     const path = request.nextUrl.pathname;
+    const publicRoute = publicRoutes.find(route => route.path === path);
+    const authToken = request.cookies.get('token')
+
+    if(!authToken && publicRoute) {
+        return NextResponse.next()
+    }
+
+    if(!authToken && !publicRoute) {
+        return NextResponse.redirect(REDIRECT_WEN_NOT_AUTHENTICATED)
+    }
 
     return NextResponse.next();
 }
