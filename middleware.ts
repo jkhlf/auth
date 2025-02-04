@@ -1,39 +1,40 @@
-import { NextResponse, type MiddlewareConfig, type NextRequest } from "next/server"
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-const publicRoutes = [
-    {path: 'login', whenAuthenticated: 'redirect'},
-    {path: 'register', whenAuthenticated: 'redirect'},
-    {path: 'pricing', whenAuthenticated: 'next'},
+const isPublicRoute = createRouteMatcher([
 
-]
- 
-const REDIRECT_WEN_NOT_AUTHENTICATED = '/login'
+  '/sign-in(.*)',
 
-export function middleware (request: NextRequest) {
-    const path = request.nextUrl.pathname;
-    const publicRoute = publicRoutes.find(route => route.path === path);
-    const authToken = request.cookies.get('token')
+  '/sign-up(.*)'
 
-    if(!authToken && publicRoute) {
-        return NextResponse.next()
-    }
+])
 
-    if(!authToken && !publicRoute) {
-        return NextResponse.redirect(REDIRECT_WEN_NOT_AUTHENTICATED)
-    }
+const isProtectedRoute = createRouteMatcher(["/dashboard(.*)"]);
 
-    return NextResponse.next();
-}
 
-export const config: MiddlewareConfig  = {
-    matcher: [
-         /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico, sitemap.xml, robots.txt (metadata files)
-     */
-    '/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)'
-    ],
+
+
+export default clerkMiddleware(async (auth, req) => {
+  if (!isPublicRoute(req)) {
+
+    await auth.protect()
+
+  }
+
+  if (isProtectedRoute(req)) await auth.protect();
+});
+
+export const config = {
+
+  matcher: [
+
+    // Skip Next.js internals and all static files, unless found in search params
+
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+
+    // Always run for API routes
+
+    '/(api|trpc)(.*)',
+
+  ],
+
 }
